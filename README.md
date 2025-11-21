@@ -1,11 +1,13 @@
 # Biobank APOE Genotyping Toolkit 🧬
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
 [![PLINK](https://img.shields.io/badge/Tool-PLINK%201.9-red)](https://www.cog-genomics.org/plink/)
 [![Bioinformatics](https://img.shields.io/badge/Domain-Bioinformatics-green.svg)]()
+[![Portfolio](https://img.shields.io/badge/Status-Portfolio_Project-purple.svg)]()
 
 **A High-Performance, Automated Pipeline for Clinical APOE Genotyping at Biobank Scale.**
+
+> **Note:** This repository contains sanitized versions of scripts developed during my tenure at **NIHR BioResource**. They are presented here for **educational and portfolio purposes only** to demonstrate proficiency in bioinformatics pipelines. No real patient data or internal infrastructure paths are included.
 
 The **Biobank APOE Genotyping Toolkit** is a production-grade bioinformatics pipeline designed to standardize the extraction and classification of *Apolipoprotein E* (APOE) genotypes from large-scale genomic datasets (PLINK).
 
@@ -87,9 +89,6 @@ Combine outputs from multiple cohorts into a master dataset:
 
 ## 🤝 Contributing
 Contributions are welcome! We follow strict coding standards to ensure clinical accuracy. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-## 📄 License
-This project is licensed under the [MIT License](LICENSE).
 
 ---
 *Designed for the scientific community to advance Alzheimer's research through transparent and reproducible data science.*

@@ -15,8 +15,9 @@ Features:
 - Stratifies by phenotype (Case/Control)
 - Type-safe and error-tolerant
 
-Author: Ugur Tuna
-License: MIT
+Author:      Ugur Tuna
+Context:     Developed during tenure at NIHR BioResource (Cambridge).
+Disclaimer:  Sanitized version for educational/portfolio use.
 """
 
 import argparse

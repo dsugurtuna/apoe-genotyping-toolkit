@@ -2,6 +2,11 @@
 
 # ==============================================================================
 # Script Name: run_apoe_pipeline.sh
+# Author:      Ugur Tuna
+# Context:     Developed during tenure at NIHR BioResource (Cambridge).
+# Disclaimer:  This script is a sanitized version for educational/portfolio use.
+#              It contains no real patient data or internal infrastructure paths.
+#
 # Description: Automates the extraction of APOE SNPs from PLINK datasets and 
 #              calls genotypes using the Python helper script.
 # Usage:       ./run_apoe_pipeline.sh <input_bfile_prefix> <output_prefix>

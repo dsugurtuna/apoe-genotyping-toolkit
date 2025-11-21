@@ -2,6 +2,10 @@
 
 # ==============================================================================
 # Script Name: merge_batches.sh
+# Author:      Ugur Tuna
+# Context:     Developed during tenure at NIHR BioResource (Cambridge).
+# Disclaimer:  Sanitized version for educational/portfolio use.
+#
 # Description: Merges multiple APOE genotype CSV files into a single master file.
 # Usage:       ./merge_batches.sh <output_filename.csv> <input_file1.csv> [input_file2.csv ...]
 # ==============================================================================
