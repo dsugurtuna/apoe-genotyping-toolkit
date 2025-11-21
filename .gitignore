@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+
+# PLINK Output Files
+*.bed
+*.bim
+*.fam
+*.log
+*.nosex
+*.ped
+*.map
+
+# Pipeline Outputs
+*.APOE_GENOTYPES.csv
+*.APOE_SUMMARY.csv
+*_temp*
+
+# OS Specific
+.DS_Store
