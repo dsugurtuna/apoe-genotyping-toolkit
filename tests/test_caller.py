@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from apoe_toolkit.caller import APOECaller, APOEResult
+from apoe_toolkit.caller import APOECaller
 
 
 @pytest.fixture

@@ -21,9 +21,7 @@ Author: Ugur Tuna
 """
 
 import argparse
-import json
 import sys
-from pathlib import Path
 
 from apoe_toolkit.caller import APOECaller
 from apoe_toolkit.feasibility import APOEFeasibilityEstimator

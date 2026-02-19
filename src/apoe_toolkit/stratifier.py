@@ -22,11 +22,9 @@ Author: Ugur Tuna
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 import pandas as pd
-
-from apoe_toolkit.caller import APOEResult
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +38,8 @@ class StratificationConfig:
     target_male_count: int = 176
     apoe_carrier_ratio: float = 0.5  # proportion of e4 carriers in each group
     exclude_e2_carriers: bool = True
-    female_age_bands: Optional[List[Tuple[int, int]]] = None
-    male_age_bands: Optional[List[Tuple[int, int]]] = None
+    female_age_bands: Optional[list[tuple[int, int]]] = None
+    male_age_bands: Optional[list[tuple[int, int]]] = None
 
     def __post_init__(self):
         if self.female_age_bands is None:
@@ -72,7 +70,7 @@ class RecallList:
 
     arm_name: str
     participants: pd.DataFrame
-    summary: Dict[str, int] = field(default_factory=dict)
+    summary: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -197,7 +195,7 @@ class CohortStratifier:
         arm_name: str,
         target_count: int,
         carrier_ratio: float,
-        age_bands: Optional[List[Tuple[int, int]]],
+        age_bands: Optional[list[tuple[int, int]]],
     ) -> RecallList:
         """Select participants for one arm, balanced by APOE and age."""
         carriers = df[df["is_e4_carrier"]]
@@ -230,13 +228,13 @@ class CohortStratifier:
     def _sample_by_age_bands(
         df: pd.DataFrame,
         target: int,
-        age_bands: List[Tuple[int, int]],
+        age_bands: list[tuple[int, int]],
     ) -> pd.DataFrame:
         """Distribute samples proportionally across age bands."""
         per_band = max(1, target // len(age_bands))
         remainder = target - per_band * len(age_bands)
 
-        parts: List[pd.DataFrame] = []
+        parts: list[pd.DataFrame] = []
         for i, (lo, hi) in enumerate(age_bands):
             band_df = df[(df["age"] >= lo) & (df["age"] <= hi)]
             n = per_band + (1 if i < remainder else 0)
@@ -248,7 +246,7 @@ class CohortStratifier:
     def export_recall_lists(
         result: StratificationResult,
         output_dir: str,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Write recall lists and summary to CSV files.
 
@@ -264,7 +262,7 @@ class CohortStratifier:
         """
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
-        created: List[str] = []
+        created: list[str] = []
 
         study_slug = result.config.study_name.replace(" ", "_").lower()
 

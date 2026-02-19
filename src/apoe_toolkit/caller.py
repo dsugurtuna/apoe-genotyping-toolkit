@@ -21,10 +21,8 @@ Author: Ugur Tuna
 """
 
 import logging
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -34,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Data Models
 # ---------------------------------------------------------------------------
 
-APOE_DIPLOTYPE_MAP: Dict[Tuple[str, str], str] = {
+APOE_DIPLOTYPE_MAP: dict[tuple[str, str], str] = {
     # Homozygous
     ("TT", "TT"): "e2/e2",
     ("TT", "CC"): "e3/e3",
@@ -51,7 +49,7 @@ APOE_DIPLOTYPE_MAP: Dict[Tuple[str, str], str] = {
     ("TC", "CT"): "e2/e4",
 }
 
-RISK_PROFILES: Dict[str, str] = {
+RISK_PROFILES: dict[str, str] = {
     "e2/e2": "Reduced risk",
     "e2/e3": "Reduced risk",
     "e3/e3": "Population baseline",
@@ -79,7 +77,7 @@ class APOESummary:
     """Aggregate statistics for a cohort of APOE calls."""
 
     total_samples: int = 0
-    genotype_counts: Dict[str, int] = field(default_factory=dict)
+    genotype_counts: dict[str, int] = field(default_factory=dict)
     e4_carrier_count: int = 0
     e2_carrier_count: int = 0
     e3e3_count: int = 0
@@ -106,7 +104,7 @@ class APOECaller:
 
     REQUIRED_SNPS = ("rs429358", "rs7412")
 
-    def call_from_raw(self, filepath: str) -> List[APOEResult]:
+    def call_from_raw(self, filepath: str) -> list[APOEResult]:
         """
         Call APOE genotypes from a PLINK .raw file.
 
@@ -130,7 +128,7 @@ class APOECaller:
         df = pd.read_csv(path, sep=r"\s+", engine="python")
         return self._call_from_dataframe(df)
 
-    def call_from_ped(self, filepath: str) -> List[APOEResult]:
+    def call_from_ped(self, filepath: str) -> list[APOEResult]:
         """
         Call APOE genotypes from a PLINK .ped file with two extracted SNPs.
 
@@ -150,7 +148,7 @@ class APOECaller:
         header = ["FID", "IID", "PAT", "MAT", "SEX", "PHENO", "rs429358", "rs7412"]
         df = pd.read_csv(path, sep=r"\s+", names=header, header=None, engine="python")
 
-        results: List[APOEResult] = []
+        results: list[APOEResult] = []
         for _, row in df.iterrows():
             gt_429 = str(row["rs429358"])
             gt_741 = str(row["rs7412"])
@@ -177,7 +175,7 @@ class APOECaller:
         rs429358_col: str = "rs429358",
         rs7412_col: str = "rs7412",
         sep: str = ",",
-    ) -> List[APOEResult]:
+    ) -> list[APOEResult]:
         """
         Call APOE genotypes from a generic CSV/TSV file.
 
@@ -208,7 +206,7 @@ class APOECaller:
         if missing:
             raise ValueError(f"Missing columns in input: {missing}")
 
-        results: List[APOEResult] = []
+        results: list[APOEResult] = []
         for _, row in df.iterrows():
             gt_429 = str(row[rs429358_col])
             gt_741 = str(row[rs7412_col])
@@ -232,9 +230,9 @@ class APOECaller:
     # internal helpers
     # ------------------------------------------------------------------
 
-    def _call_from_dataframe(self, df: pd.DataFrame) -> List[APOEResult]:
+    def _call_from_dataframe(self, df: pd.DataFrame) -> list[APOEResult]:
         """Resolve genotype from a DataFrame containing allele-count columns."""
-        results: List[APOEResult] = []
+        results: list[APOEResult] = []
         # In .raw format the columns are named <SNP>_<counted_allele>
         snp_cols = [c for c in df.columns if c.startswith(("rs429358", "rs7412"))]
         if len(snp_cols) < 2:
@@ -267,7 +265,7 @@ class APOECaller:
     @staticmethod
     def _dosage_to_diplotype(
         dose_429: float, dose_741: float
-    ) -> Tuple[str, str, str]:
+    ) -> tuple[str, str, str]:
         """
         Convert allele dosages (0/1/2) to diplotype strings and resolve the
         APOE genotype.
@@ -296,7 +294,7 @@ class APOECaller:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def summarise(results: List[APOEResult]) -> APOESummary:
+    def summarise(results: list[APOEResult]) -> APOESummary:
         """
         Produce aggregate statistics from a list of APOE results.
 
@@ -324,7 +322,7 @@ class APOECaller:
         return summary
 
     @staticmethod
-    def results_to_dataframe(results: List[APOEResult]) -> pd.DataFrame:
+    def results_to_dataframe(results: list[APOEResult]) -> pd.DataFrame:
         """Convert a list of APOEResult to a pandas DataFrame."""
         records = [
             {

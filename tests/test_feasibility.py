@@ -2,7 +2,7 @@
 
 import pytest
 
-from apoe_toolkit.caller import APOECaller, APOEResult
+from apoe_toolkit.caller import APOEResult
 from apoe_toolkit.feasibility import APOEFeasibilityEstimator
 
 

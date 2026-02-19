@@ -18,9 +18,7 @@ Author: Ugur Tuna
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
-
-import pandas as pd
+from typing import Optional
 
 from apoe_toolkit.caller import APOECaller, APOEResult
 
@@ -34,9 +32,9 @@ class FeasibilityReport:
     study_name: str
     total_genotyped: int = 0
     eligible_count: int = 0
-    target_genotypes: List[str] = field(default_factory=list)
-    genotype_breakdown: Dict[str, int] = field(default_factory=dict)
-    exclusion_criteria: List[str] = field(default_factory=list)
+    target_genotypes: list[str] = field(default_factory=list)
+    genotype_breakdown: dict[str, int] = field(default_factory=dict)
+    exclusion_criteria: list[str] = field(default_factory=list)
     excluded_count: int = 0
     notes: str = ""
 
@@ -82,10 +80,10 @@ class APOEFeasibilityEstimator:
 
     def estimate_from_results(
         self,
-        results: List[APOEResult],
+        results: list[APOEResult],
         study_name: str = "Unnamed Study",
-        target_genotypes: Optional[List[str]] = None,
-        exclude_genotypes: Optional[List[str]] = None,
+        target_genotypes: Optional[list[str]] = None,
+        exclude_genotypes: Optional[list[str]] = None,
         exclude_indeterminate: bool = True,
     ) -> FeasibilityReport:
         """
@@ -109,10 +107,10 @@ class APOEFeasibilityEstimator:
         -------
         FeasibilityReport
         """
-        target_set: Optional[Set[str]] = (
+        target_set: Optional[set[str]] = (
             set(target_genotypes) if target_genotypes else None
         )
-        exclude_set: Set[str] = set(exclude_genotypes) if exclude_genotypes else set()
+        exclude_set: set[str] = set(exclude_genotypes) if exclude_genotypes else set()
         if exclude_indeterminate:
             exclude_set.add("Indeterminate")
 
@@ -145,8 +143,8 @@ class APOEFeasibilityEstimator:
         self,
         filepath: str,
         study_name: str = "Unnamed Study",
-        target_genotypes: Optional[List[str]] = None,
-        exclude_genotypes: Optional[List[str]] = None,
+        target_genotypes: Optional[list[str]] = None,
+        exclude_genotypes: Optional[list[str]] = None,
         sample_col: str = "IID",
         rs429358_col: str = "rs429358",
         rs7412_col: str = "rs7412",
