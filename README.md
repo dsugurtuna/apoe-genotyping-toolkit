@@ -1,94 +1,171 @@
-# Biobank APOE Genotyping Toolkit 🧬
+# APOE Genotyping Toolkit
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![CI](https://github.com/dsugurtuna/apoe-genotyping-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/dsugurtuna/apoe-genotyping-toolkit/actions)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
 [![PLINK](https://img.shields.io/badge/Tool-PLINK%201.9-red)](https://www.cog-genomics.org/plink/)
 [![Bioinformatics](https://img.shields.io/badge/Domain-Bioinformatics-green.svg)]()
 [![Portfolio](https://img.shields.io/badge/Status-Portfolio_Project-purple.svg)]()
 
-**A High-Performance, Automated Pipeline for Clinical APOE Genotyping at Biobank Scale.**
+A production-grade bioinformatics toolkit for determining Apolipoprotein E (APOE) genotypes from large-scale genomic datasets, estimating clinical-trial feasibility, and generating stratified recall lists.
 
-> **Note:** This repository contains sanitized versions of scripts developed during my tenure at **NIHR BioResource**. They are presented here for **educational and portfolio purposes only** to demonstrate proficiency in bioinformatics pipelines. No real patient data or internal infrastructure paths are included.
-
-The **Biobank APOE Genotyping Toolkit** is a production-grade bioinformatics pipeline designed to standardize the extraction and classification of *Apolipoprotein E* (APOE) genotypes from large-scale genomic datasets (PLINK).
-
-It is engineered for **reproducibility**, **scalability**, and **clinical accuracy**, making it an essential tool for Alzheimer's research and population genetics.
+> **Portfolio disclaimer:** This repository contains sanitised, generalised versions of tooling developed during the author's tenure at NIHR BioResource. No real patient data, internal infrastructure paths, or participant identifiers are included. All examples use synthetic data.
 
 ---
 
-## 🌟 Why This Matters
+## Why This Matters
 
-The APOE gene is the strongest genetic risk factor for late-onset Alzheimer's disease. Accurately determining a participant's genotype (e.g., `e3/e4` vs `e3/e3`) is critical for:
-*   **Clinical Trials**: Stratifying patients by risk profile.
-*   **GWAS Studies**: Adjusting for population structure and risk covariates.
-*   **Precision Medicine**: Tailoring interventions based on genetic susceptibility.
+The APOE gene is the strongest known genetic risk factor for late-onset Alzheimer's disease. Accurately determining a participant's genotype (e.g. e3/e4 vs e3/e3) is critical for:
 
-This toolkit solves the challenge of manually parsing complex haplotype combinations (`rs429358` + `rs7412`) across millions of samples.
+- **Clinical trials** — stratifying patients by risk profile (e.g. NewAmsterdam Pharma AD feasibility screening).
+- **Recall studies** — generating balanced cohorts such as the NBR267 Memory and Menopause study requiring 816 participants split by APOE e4 carrier status, gender, and age band.
+- **GWAS preparation** — adjusting for APOE as a covariate in genome-wide association studies.
+- **Precision medicine** — tailoring interventions based on genetic susceptibility.
 
-## 🚀 Key Features
+## Features
 
-*   **⚡ HPC-Optimized**: Built to run on Slurm/SGE clusters, processing thousands of samples in minutes.
-*   **🛡️ Robust Classification**: Implements standard clinical mapping logic to resolve all 6 genotype combinations, including rare variants.
-*   **📊 Automated Reporting**: Generates audit-ready CSVs with phenotype stratification (Cases vs. Controls).
-*   **🔧 Modular Design**: Decoupled extraction (Bash/PLINK) and logic (Python) layers for easy maintenance.
+| Module | Description |
+|---|---|
+| **APOECaller** | Resolves all six standard diplotypes from rs429358 + rs7412 dosages. Reads PLINK `.raw`, `.ped`, and CSV/TSV. |
+| **APOEFeasibilityEstimator** | Estimates participant counts meeting target diplotype criteria for pharmaceutical feasibility enquiries. |
+| **CohortStratifier** | Generates recall lists balanced by APOE e4 carrier status, gender, and age band with configurable exclusion of e2 carriers. |
+| **CLI** | Three sub-commands (`call`, `feasibility`, `stratify`) for scriptable pipeline integration. |
 
-## 🧬 Genotype Mapping Logic
+## Genotype Mapping Logic
 
-The toolkit implements the following standard haplotype mapping:
+| rs429358 (codon 112) | rs7412 (codon 158) | APOE Genotype | Risk Profile |
+|---|---|---|---|
+| T/T | T/T | e2/e2 | Reduced risk |
+| T/T | C/T | e2/e3 | Reduced risk |
+| T/T | C/C | e3/e3 | Population baseline |
+| C/T | C/T | e2/e4 | Uncertain / mixed |
+| C/T | C/C | e3/e4 | Increased risk |
+| C/C | C/C | e4/e4 | Substantially increased risk |
 
-| rs429358 (112) | rs7412 (158) | APOE Genotype | Risk Profile |
-| :--- | :--- | :--- | :--- |
-| **T** | **T** | **e2/e2** | Lower Risk |
-| **T** | **C** | **e3/e3** | Neutral (Benchmark) |
-| **C** | **C** | **e4/e4** | High Risk (Alzheimer's) |
-| *Heterozygous* | *Heterozygous* | *e.g., e3/e4* | Mixed Risk |
-
-## 📂 Repository Structure
+## Repository Structure
 
 ```text
 .
-├── run_apoe_pipeline.sh   # 🚀 Main Driver: Orchestrates PLINK & Python
-├── apoe_caller.py         # 🧠 Core Logic: Genotype classification engine
-├── merge_batches.sh       # 🔄 Utility: Merges multi-batch outputs
-├── slurm_template.sh      # ⚡ HPC: Ready-to-use cluster submission script
-├── snp_list.txt           # ⚙️ Config: Target SNP definitions
-└── requirements.txt       # 📦 Dependencies
+├── src/apoe_toolkit/          Python package
+│   ├── __init__.py            Package root (v2.0.0)
+│   ├── caller.py              Core genotype calling engine
+│   ├── feasibility.py         Clinical-trial feasibility estimator
+│   ├── stratifier.py          Stratified recall-list generator
+│   └── cli.py                 Command-line interface
+├── tests/                     Pytest test suite
+│   ├── test_caller.py
+│   ├── test_feasibility.py
+│   └── test_stratifier.py
+├── data/example/              Synthetic example data
+│   ├── example_dosages.csv
+│   └── example_cohort.csv
+├── legacy/                    Original pipeline scripts
+│   ├── apoe_caller.py
+│   ├── run_apoe_pipeline.sh
+│   ├── merge_batches.sh
+│   ├── slurm_template.sh
+│   └── snp_list.txt
+├── .github/workflows/ci.yml  GitHub Actions CI
+├── pyproject.toml             Build configuration
+├── Dockerfile                 Container image
+├── Makefile                   Developer shortcuts
+└── README.md
 ```
 
-## 🛠️ Quick Start
-
-### Prerequisites
-*   **PLINK 1.9**: [Download](https://www.cog-genomics.org/plink/)
-*   **Python 3.8+**: `pip install -r requirements.txt`
+## Quick Start
 
 ### Installation
+
 ```bash
-git clone https://github.com/dsugurtuna/biobank-apoe-toolkit.git
-cd biobank-apoe-toolkit
-chmod +x *.sh
+# From source
+git clone https://github.com/dsugurtuna/apoe-genotyping-toolkit.git
+cd apoe-genotyping-toolkit
+pip install .
+
+# With development dependencies
+pip install -e ".[dev]"
 ```
 
-### Usage
+### Command-Line Usage
 
-**1. Standard Execution**
-Run the pipeline on a local PLINK dataset:
+**Call genotypes from a CSV:**
 ```bash
-./run_apoe_pipeline.sh /path/to/data/batch28_genotypes ./results/batch28
+apoe-toolkit call --input data/example/example_dosages.csv --format csv --summary
 ```
 
-**2. HPC Batch Processing (Slurm)**
-Submit a job to process multiple batches in parallel:
+**Estimate feasibility for an Alzheimer's trial:**
 ```bash
-sbatch slurm_template.sh
+apoe-toolkit feasibility --input results.csv --targets e4/e4 e3/e4
 ```
 
-**3. Merging Results**
-Combine outputs from multiple cohorts into a master dataset:
+**Generate stratified recall lists (NBR267-style):**
 ```bash
-./merge_batches.sh master_apoe_calls.csv ./results/*.APOE_GENOTYPES.csv
+apoe-toolkit stratify \
+    --input data/example/example_cohort.csv \
+    --study "NBR267 Memory and Menopause" \
+    --females 640 --males 176 \
+    --output-dir recall_output/
 ```
 
-## 🤝 Contributing
-Contributions are welcome! We follow strict coding standards to ensure clinical accuracy. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+### Python API
 
----
-*Designed for the scientific community to advance Alzheimer's research through transparent and reproducible data science.*
+```python
+from apoe_toolkit import APOECaller, APOEFeasibilityEstimator, CohortStratifier
+
+# Call genotypes
+caller = APOECaller()
+results = caller.call_from_csv("genotypes.csv", sample_col="IID")
+summary = caller.summarise(results)
+
+# Feasibility
+estimator = APOEFeasibilityEstimator()
+report = estimator.estimate_from_results(
+    results, target_genotypes=["e3/e4", "e4/e4"]
+)
+print(estimator.format_report(report))
+
+# Stratification
+import pandas as pd
+from apoe_toolkit.stratifier import StratificationConfig
+
+cohort = pd.read_csv("cohort.csv")
+config = StratificationConfig(
+    study_name="NBR267 Memory and Menopause",
+    target_female_count=640,
+    target_male_count=176,
+    exclude_e2_carriers=True,
+)
+stratifier = CohortStratifier()
+result = stratifier.stratify(cohort, config)
+stratifier.export_recall_lists(result, "recall_output/")
+```
+
+### Docker
+
+```bash
+docker build -t apoe-toolkit .
+docker run --rm -v "$PWD/data:/data" apoe-toolkit call --input /data/example/example_dosages.csv --format csv
+```
+
+## Legacy Scripts
+
+The original Bash/Python pipeline scripts are preserved under the `legacy/` directory for reference. These were designed for HPC (SLURM) environments and rely on PLINK 1.9 for genotype extraction before passing data to the Python caller.
+
+## Testing
+
+```bash
+make test        # runs pytest
+make lint        # runs ruff linter
+make typecheck   # runs mypy
+```
+
+## Jira Provenance
+
+This toolkit consolidates work from the following categories of tasks:
+
+- **APOE genotyping** — Batch processing of UKBBv2.1 arrays through PLINK extraction and Python-based diplotype resolution.
+- **Feasibility screening** — Rapid e4/e4 and e3/e4 counts for pharmaceutical trial viability assessment (Alzheimer's disease).
+- **Recall-study generation** — Stratified recall lists for studies requiring balanced APOE/gender/age representation (e.g. 816-participant design with 50/50 e4 carrier split across menopause stages).
+
+## Licence
+
+MIT
