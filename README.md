@@ -12,8 +12,8 @@ Call APOE genotypes (e2/e3/e4) from rs429358 and rs7412, count how many genotype
 
 The APOE gene is the strongest known genetic risk factor for late-onset Alzheimer's disease. Accurately determining a participant's genotype (e.g. e3/e4 vs e3/e3) is critical for:
 
-- **Clinical trials** — stratifying patients by risk profile (e.g. NewAmsterdam Pharma AD feasibility screening).
-- **Recall studies** — generating balanced cohorts such as the NBR267 Memory and Menopause study requiring 816 participants split by APOE e4 carrier status, gender, and age band.
+- **Clinical trials** — stratifying patients by risk profile (e.g. feasibility screening for a pharmaceutical sponsor's Alzheimer's disease trial).
+- **Recall studies** — generating balanced cohorts, for example 800 participants split by APOE e4 carrier status, gender, and age band.
 - **GWAS preparation** — adjusting for APOE as a covariate in genome-wide association studies.
 - **Precision medicine** — tailoring interventions based on genetic susceptibility.
 
@@ -75,12 +75,12 @@ apoe-toolkit call --input data/example/example_dosages.csv --format csv --summar
 apoe-toolkit feasibility --input data/example/example_dosages.csv --targets e4/e4 e3/e4
 ```
 
-**Generate stratified recall lists (NBR267-style):**
+**Generate stratified recall lists:**
 ```bash
 apoe-toolkit stratify \
     --input data/example/example_cohort.csv \
-    --study "NBR267 Memory and Menopause" \
-    --females 640 --males 176 \
+    --study "STUDY-A" \
+    --females 600 --males 200 \
     --output-dir recall_output/
 ```
 
@@ -107,9 +107,9 @@ from apoe_toolkit.stratifier import StratificationConfig
 
 cohort = pd.read_csv("cohort.csv")
 config = StratificationConfig(
-    study_name="NBR267 Memory and Menopause",
-    target_female_count=640,
-    target_male_count=176,
+    study_name="STUDY-A",
+    target_female_count=600,
+    target_male_count=200,
     exclude_e2_carriers=True,
 )
 stratifier = CohortStratifier()
@@ -159,14 +159,6 @@ Genotype calls feed [clinical-cohort-selector](https://github.com/dsugurtuna/cli
 - Read VCF directly (via BCFtools) as well as PLINK output.
 - Add an optional random seed to recall-list selection.
 - Report genotype call rates for the two SNPs alongside the counts.
-
-## Jira Provenance
-
-This toolkit consolidates work from the following categories of tasks:
-
-- **APOE genotyping** — Batch processing of UKBBv2.1 arrays through PLINK extraction and Python-based diplotype resolution.
-- **Feasibility screening** — Rapid e4/e4 and e3/e4 counts for pharmaceutical trial viability assessment (Alzheimer's disease).
-- **Recall-study generation** — Stratified recall lists for studies requiring balanced APOE/gender/age representation (e.g. 816-participant design with 50/50 e4 carrier split across menopause stages).
 
 ## Licence
 

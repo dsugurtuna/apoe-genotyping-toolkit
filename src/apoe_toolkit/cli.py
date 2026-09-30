@@ -15,7 +15,7 @@ Usage::
 
     apoe-toolkit call  --input data.csv --format csv --output results.csv
     apoe-toolkit feasibility --input results.csv --targets e4/e4 e3/e4
-    apoe-toolkit stratify --input cohort.csv --study "NBR267" --females 640 --males 176
+    apoe-toolkit stratify --input cohort.csv --study "STUDY-A" --females 600 --males 200
 
 Author: Ugur Tuna
 """
@@ -92,9 +92,9 @@ def _build_parser() -> argparse.ArgumentParser:
     strat_p.add_argument("--input", "-i", required=True, help="Path to cohort CSV.")
     strat_p.add_argument("--study", default="Unnamed Study", help="Study name.")
     strat_p.add_argument(
-        "--females", type=int, default=640, help="Target female count."
+        "--females", type=int, default=600, help="Target female count."
     )
-    strat_p.add_argument("--males", type=int, default=176, help="Target male count.")
+    strat_p.add_argument("--males", type=int, default=200, help="Target male count.")
     strat_p.add_argument(
         "--output-dir",
         "-o",

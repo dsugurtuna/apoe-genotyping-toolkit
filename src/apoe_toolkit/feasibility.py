@@ -8,10 +8,9 @@ participants. Given a genotyped cohort, calculates the number of available
 participants meeting specific APOE genotype criteria (e.g. e4/e4 homozygotes
 or e3/e4 heterozygotes for an Alzheimer's disease trial).
 
-This module was inspired by work supporting pharmaceutical feasibility enquiries
-such as those from NewAmsterdam Pharma (Alzheimer's Disease clinical trial
-screening), where approximate counts of e4 carriers were required to assess
-study viability.
+This module was inspired by pharmaceutical feasibility enquiries (for example,
+screening for an Alzheimer's disease clinical trial), where approximate counts
+of e4 carriers were required to assess study viability.
 
 Author: Ugur Tuna
 """
@@ -89,7 +88,7 @@ class APOEFeasibilityEstimator:
         # For an Alzheimer's trial requiring e4 carriers
         report = estimator.estimate_from_results(
             results=apoe_results,
-            study_name="NewAmsterdam AD Trial",
+            study_name="EXAMPLE-AD-TRIAL",
             target_genotypes=["e3/e4", "e4/e4"],
             exclude_genotypes=["e2/e2", "e2/e3", "e2/e4"],
         )
@@ -206,7 +205,7 @@ class APOEFeasibilityEstimator:
     @staticmethod
     def format_report(report: FeasibilityReport) -> str:
         """
-        Return a human-readable text summary suitable for email or Jira.
+        Return a human-readable text summary suitable for an email or a ticket.
 
         Parameters
         ----------

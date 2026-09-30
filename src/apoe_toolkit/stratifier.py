@@ -12,9 +12,8 @@ complex stratification requirements such as:
   - Age-band matching between case and control arms
   - Exclusion of e2 carriers
 
-This module was inspired by work supporting the NBR267 (Memory and Menopause)
-study, which required 816 participants stratified by menopause stage, gender,
-and APOE4 carrier status.
+Generalised from biobank recall-study work; all examples use synthetic data
+and illustrative numbers.
 
 Author: Ugur Tuna
 """
@@ -33,8 +32,8 @@ class StratificationConfig:
     """Configuration for a stratified recall list."""
 
     study_name: str = "Unnamed Study"
-    target_female_count: int = 640
-    target_male_count: int = 176
+    target_female_count: int = 600
+    target_male_count: int = 200
     apoe_carrier_ratio: float = 0.5  # proportion of e4 carriers in each group
     exclude_e2_carriers: bool = True
     female_age_bands: list[tuple[int, int]] | None = None
@@ -101,9 +100,9 @@ class CohortStratifier:
 
         stratifier = CohortStratifier()
         config = StratificationConfig(
-            study_name="NBR267 Memory and Menopause",
-            target_female_count=640,
-            target_male_count=176,
+            study_name="STUDY-A",
+            target_female_count=600,
+            target_male_count=200,
             exclude_e2_carriers=True,
         )
         result = stratifier.stratify(cohort_df, config)
