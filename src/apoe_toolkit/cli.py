@@ -142,8 +142,6 @@ def cmd_call(args: argparse.Namespace) -> None:
                 (count / summary.total_samples * 100) if summary.total_samples else 0.0
             )
             print(f"  {dip:12s}  {count:>6,}  ({pct:.1f}%)")
-        if summary.indeterminate_count:
-            print(f"  Indeterminate {summary.indeterminate_count:>6,}")
 
 
 def cmd_feasibility(args: argparse.Namespace) -> None:
