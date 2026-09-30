@@ -53,12 +53,7 @@ class TestFeasibilityEstimator:
     def test_estimate_from_csv(self, estimator, tmp_path):
         csv = tmp_path / "results.csv"
         csv.write_text(
-            "IID,rs429358,rs7412\n"
-            "S1,TT,CC\n"
-            "S2,CC,CC\n"
-            "S3,CT,CC\n"
-            "S4,TT,CT\n"
-            "S5,TT,CC\n"
+            "IID,rs429358,rs7412\nS1,TT,CC\nS2,CC,CC\nS3,CT,CC\nS4,TT,CT\nS5,TT,CC\n"
         )
         report = estimator.estimate_from_csv(
             filepath=str(csv),

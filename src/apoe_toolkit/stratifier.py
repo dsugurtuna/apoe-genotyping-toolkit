@@ -12,9 +12,8 @@ complex stratification requirements such as:
   - Age-band matching between case and control arms
   - Exclusion of e2 carriers
 
-This module was inspired by work supporting the NBR267 (Memory and Menopause)
-study, which required 816 participants stratified by menopause stage, gender,
-and APOE4 carrier status.
+Generalised from biobank recall-study work; all examples use synthetic data
+and illustrative numbers.
 
 Author: Ugur Tuna
 """
@@ -22,7 +21,6 @@ Author: Ugur Tuna
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -34,14 +32,14 @@ class StratificationConfig:
     """Configuration for a stratified recall list."""
 
     study_name: str = "Unnamed Study"
-    target_female_count: int = 640
-    target_male_count: int = 176
+    target_female_count: int = 600
+    target_male_count: int = 200
     apoe_carrier_ratio: float = 0.5  # proportion of e4 carriers in each group
     exclude_e2_carriers: bool = True
-    female_age_bands: Optional[list[tuple[int, int]]] = None
-    male_age_bands: Optional[list[tuple[int, int]]] = None
+    female_age_bands: list[tuple[int, int]] | None = None
+    male_age_bands: list[tuple[int, int]] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.female_age_bands is None:
             self.female_age_bands = [
                 (35, 39),
@@ -78,8 +76,8 @@ class StratificationResult:
     """Complete output of a stratification run."""
 
     config: StratificationConfig
-    female_list: Optional[RecallList] = None
-    male_list: Optional[RecallList] = None
+    female_list: RecallList | None = None
+    male_list: RecallList | None = None
     excluded_count: int = 0
     total_eligible: int = 0
 
@@ -102,9 +100,9 @@ class CohortStratifier:
 
         stratifier = CohortStratifier()
         config = StratificationConfig(
-            study_name="NBR267 Memory and Menopause",
-            target_female_count=640,
-            target_male_count=176,
+            study_name="STUDY-A",
+            target_female_count=600,
+            target_male_count=200,
             exclude_e2_carriers=True,
         )
         result = stratifier.stratify(cohort_df, config)
@@ -140,6 +138,7 @@ class CohortStratifier:
         # Derive age if year_of_birth is present but age is not
         if "age" not in df.columns and "year_of_birth" in df.columns:
             import datetime
+
             current_year = datetime.datetime.now().year
             df["age"] = current_year - df["year_of_birth"]
 
@@ -157,7 +156,9 @@ class CohortStratifier:
         excluded = initial_count - len(df)
 
         # Classify carrier status
-        df["is_e4_carrier"] = df["apoe_genotype"].str.contains("e4", case=False, na=False)
+        df["is_e4_carrier"] = df["apoe_genotype"].str.contains(
+            "e4", case=False, na=False
+        )
 
         result = StratificationResult(
             config=config,
@@ -195,7 +196,7 @@ class CohortStratifier:
         arm_name: str,
         target_count: int,
         carrier_ratio: float,
-        age_bands: Optional[list[tuple[int, int]]],
+        age_bands: list[tuple[int, int]] | None,
     ) -> RecallList:
         """Select participants for one arm, balanced by APOE and age."""
         carriers = df[df["is_e4_carrier"]]
@@ -205,8 +206,12 @@ class CohortStratifier:
         n_non_carriers = target_count - n_carriers
 
         if age_bands:
-            selected_carriers = self._sample_by_age_bands(carriers, n_carriers, age_bands)
-            selected_non = self._sample_by_age_bands(non_carriers, n_non_carriers, age_bands)
+            selected_carriers = self._sample_by_age_bands(
+                carriers, n_carriers, age_bands
+            )
+            selected_non = self._sample_by_age_bands(
+                non_carriers, n_non_carriers, age_bands
+            )
         else:
             selected_carriers = carriers.head(min(n_carriers, len(carriers)))
             selected_non = non_carriers.head(min(n_non_carriers, len(non_carriers)))
@@ -230,17 +235,22 @@ class CohortStratifier:
         target: int,
         age_bands: list[tuple[int, int]],
     ) -> pd.DataFrame:
-        """Distribute samples proportionally across age bands."""
-        per_band = max(1, target // len(age_bands))
-        remainder = target - per_band * len(age_bands)
+        """Spread ``target`` as evenly as possible across age bands.
 
+        Each band gets ``target // n`` places and the first ``target % n``
+        bands one more, so the total never exceeds ``target``. A band with
+        too few candidates is not topped up from other bands; the shortfall
+        shows in the arm summary.
+        """
+        if target <= 0 or not age_bands:
+            return df.iloc[0:0]
+        per_band, remainder = divmod(target, len(age_bands))
         parts: list[pd.DataFrame] = []
         for i, (lo, hi) in enumerate(age_bands):
             band_df = df[(df["age"] >= lo) & (df["age"] <= hi)]
             n = per_band + (1 if i < remainder else 0)
-            parts.append(band_df.head(min(n, len(band_df))))
-
-        return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+            parts.append(band_df.head(n))
+        return pd.concat(parts, ignore_index=True)
 
     @staticmethod
     def export_recall_lists(

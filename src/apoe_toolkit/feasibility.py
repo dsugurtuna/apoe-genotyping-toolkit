@@ -8,17 +8,18 @@ participants. Given a genotyped cohort, calculates the number of available
 participants meeting specific APOE genotype criteria (e.g. e4/e4 homozygotes
 or e3/e4 heterozygotes for an Alzheimer's disease trial).
 
-This module was inspired by work supporting pharmaceutical feasibility enquiries
-such as those from NewAmsterdam Pharma (Alzheimer's Disease clinical trial
-screening), where approximate counts of e4 carriers were required to assess
-study viability.
+This module was inspired by pharmaceutical feasibility enquiries (for example,
+screening for an Alzheimer's disease clinical trial), where approximate counts
+of e4 carriers were required to assess study viability.
 
 Author: Ugur Tuna
 """
 
 import logging
+import math
 from dataclasses import dataclass, field
-from typing import Optional
+from statistics import NormalDist
+from typing import Any
 
 from apoe_toolkit.caller import APOECaller, APOEResult
 
@@ -45,7 +46,23 @@ class FeasibilityReport:
             return 0.0
         return self.eligible_count / self.total_genotyped
 
-    def to_dict(self) -> dict:
+    def eligibility_interval(self, confidence: float = 0.95) -> tuple[float, float]:
+        """Wilson score interval for the eligibility rate.
+
+        Useful when the genotyped cohort is treated as a sample of a wider
+        population (for example, to estimate how many people a recruitment
+        drive might find). For the cohort itself the count is exact.
+        """
+        n = self.total_genotyped
+        if n == 0:
+            return (0.0, 0.0)
+        z = NormalDist().inv_cdf(0.5 + confidence / 2)
+        p = self.eligible_count / n
+        centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+        half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+        return (max(0.0, centre - half), min(1.0, centre + half))
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to a plain dictionary for serialisation."""
         return {
             "study_name": self.study_name,
@@ -71,7 +88,7 @@ class APOEFeasibilityEstimator:
         # For an Alzheimer's trial requiring e4 carriers
         report = estimator.estimate_from_results(
             results=apoe_results,
-            study_name="NewAmsterdam AD Trial",
+            study_name="EXAMPLE-AD-TRIAL",
             target_genotypes=["e3/e4", "e4/e4"],
             exclude_genotypes=["e2/e2", "e2/e3", "e2/e4"],
         )
@@ -82,8 +99,8 @@ class APOEFeasibilityEstimator:
         self,
         results: list[APOEResult],
         study_name: str = "Unnamed Study",
-        target_genotypes: Optional[list[str]] = None,
-        exclude_genotypes: Optional[list[str]] = None,
+        target_genotypes: list[str] | None = None,
+        exclude_genotypes: list[str] | None = None,
         exclude_indeterminate: bool = True,
     ) -> FeasibilityReport:
         """
@@ -107,7 +124,7 @@ class APOEFeasibilityEstimator:
         -------
         FeasibilityReport
         """
-        target_set: Optional[set[str]] = (
+        target_set: set[str] | None = (
             set(target_genotypes) if target_genotypes else None
         )
         exclude_set: set[str] = set(exclude_genotypes) if exclude_genotypes else set()
@@ -143,9 +160,9 @@ class APOEFeasibilityEstimator:
         self,
         filepath: str,
         study_name: str = "Unnamed Study",
-        target_genotypes: Optional[list[str]] = None,
-        exclude_genotypes: Optional[list[str]] = None,
-        sample_col: str = "IID",
+        target_genotypes: list[str] | None = None,
+        exclude_genotypes: list[str] | None = None,
+        sample_col: str | None = None,
         rs429358_col: str = "rs429358",
         rs7412_col: str = "rs7412",
         sep: str = ",",
@@ -188,7 +205,7 @@ class APOEFeasibilityEstimator:
     @staticmethod
     def format_report(report: FeasibilityReport) -> str:
         """
-        Return a human-readable text summary suitable for email or Jira.
+        Return a human-readable text summary suitable for an email or a ticket.
 
         Parameters
         ----------
@@ -207,16 +224,20 @@ class APOEFeasibilityEstimator:
             f"Excluded participants    : {report.excluded_count:,}",
             "",
             "Target genotypes         : "
-            + (", ".join(report.target_genotypes) if report.target_genotypes else "All"),
+            + (
+                ", ".join(report.target_genotypes) if report.target_genotypes else "All"
+            ),
             "Exclusion criteria       : "
-            + (", ".join(report.exclusion_criteria) if report.exclusion_criteria else "None"),
+            + (
+                ", ".join(report.exclusion_criteria)
+                if report.exclusion_criteria
+                else "None"
+            ),
             "",
             "Genotype breakdown:",
             "-" * 40,
         ]
-        for gt, count in sorted(
-            report.genotype_breakdown.items(), key=lambda x: -x[1]
-        ):
+        for gt, count in sorted(report.genotype_breakdown.items(), key=lambda x: -x[1]):
             pct = count / report.total_genotyped * 100 if report.total_genotyped else 0
             lines.append(f"  {gt:15s}  {count:>8,}  ({pct:5.1f}%)")
 

@@ -49,12 +49,7 @@ class TestCallFromCSV:
 
     def test_basic_csv(self, caller, tmp_path):
         csv = tmp_path / "test.csv"
-        csv.write_text(
-            "IID,rs429358,rs7412\n"
-            "S1,TT,CC\n"
-            "S2,CC,CC\n"
-            "S3,TT,TT\n"
-        )
+        csv.write_text("IID,rs429358,rs7412\nS1,TT,CC\nS2,CC,CC\nS3,TT,TT\n")
         results = caller.call_from_csv(str(csv))
         assert len(results) == 3
         assert results[0].apoe_genotype == "e3/e3"
@@ -63,10 +58,7 @@ class TestCallFromCSV:
 
     def test_custom_columns(self, caller, tmp_path):
         csv = tmp_path / "test.csv"
-        csv.write_text(
-            "sample_id,rs429358,rs7412\n"
-            "S1,TT,CC\n"
-        )
+        csv.write_text("sample_id,rs429358,rs7412\nS1,TT,CC\n")
         results = caller.call_from_csv(str(csv), sample_col="sample_id")
         assert len(results) == 1
         assert results[0].sample_id == "S1"
@@ -75,12 +67,7 @@ class TestCallFromCSV:
 class TestSummarise:
     def test_summary_counts(self, caller, tmp_path):
         csv = tmp_path / "test.csv"
-        csv.write_text(
-            "IID,rs429358,rs7412\n"
-            "S1,TT,CC\n"
-            "S2,TT,CC\n"
-            "S3,CC,CC\n"
-        )
+        csv.write_text("IID,rs429358,rs7412\nS1,TT,CC\nS2,TT,CC\nS3,CC,CC\n")
         results = caller.call_from_csv(str(csv))
         summary = caller.summarise(results)
         assert summary.total_samples == 3

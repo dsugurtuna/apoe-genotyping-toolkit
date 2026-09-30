@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "apoe-genotyping-toolkit"
 version = "2.0.0"
-description = "Determine APOE diplotypes, estimate feasibility for clinical trials, and generate stratified recall lists."
+description = "Call APOE genotypes from rs429358 and rs7412, count eligible participants and build stratified recall lists."
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 authors = [
     {name = "Ugur Tuna"},
 ]
@@ -19,23 +19,20 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
-    "pandas>=1.5",
-    "numpy>=1.23",
+    "pandas>=2.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "ruff>=0.1",
-    "mypy>=1.0",
+    "pytest>=8.0",
+    "ruff==0.16.9",
+    "mypy>=1.11",
+    "pandas-stubs",
 ]
 
 [project.scripts]
@@ -50,17 +47,17 @@ Issues = "https://github.com/dsugurtuna/apoe-genotyping-toolkit/issues"
 where = ["src"]
 
 [tool.ruff]
-target-version = "py39"
-line-length = 100
+target-version = "py311"
+line-length = 88
+# legacy/ holds the original scripts, kept as published for reference.
+extend-exclude = ["legacy"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+select = ["E", "F", "W", "I", "UP", "B"]
 
 [tool.mypy]
-python_version = "3.9"
+files = ["src"]
 strict = true
-warn_return_any = true
-warn_unused_configs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

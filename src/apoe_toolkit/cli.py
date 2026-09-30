@@ -15,7 +15,7 @@ Usage::
 
     apoe-toolkit call  --input data.csv --format csv --output results.csv
     apoe-toolkit feasibility --input results.csv --targets e4/e4 e3/e4
-    apoe-toolkit stratify --input cohort.csv --study "NBR267" --females 640 --males 176
+    apoe-toolkit stratify --input cohort.csv --study "STUDY-A" --females 600 --males 200
 
 Author: Ugur Tuna
 """
@@ -31,7 +31,8 @@ from apoe_toolkit.stratifier import CohortStratifier, StratificationConfig
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="apoe-toolkit",
-        description="APOE Genotyping Toolkit — call, estimate feasibility, and stratify cohorts.",
+        description="Call APOE genotypes, count eligible participants and build "
+        "stratified recall lists.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -47,6 +48,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     call_p.add_argument("--output", "-o", default=None, help="Path to output CSV.")
     call_p.add_argument(
+        "--sample-col",
+        default=None,
+        help="Sample ID column for csv input (default: IID, else sample_id).",
+    )
+    call_p.add_argument(
         "--summary",
         action="store_true",
         help="Print a summary of diplotype counts.",
@@ -57,7 +63,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "feasibility",
         help="Estimate participant counts for target diplotypes.",
     )
-    feas_p.add_argument("--input", "-i", required=True, help="Path to results CSV.")
+    feas_p.add_argument(
+        "--input",
+        "-i",
+        required=True,
+        help="Genotype CSV (as for 'call'), or the output of 'call'.",
+    )
+    feas_p.add_argument("--sample-col", default=None, help="Sample ID column.")
     feas_p.add_argument(
         "--targets",
         nargs="+",
@@ -68,7 +80,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--confidence",
         type=float,
         default=0.95,
-        help="Confidence level for interval (default: 0.95).",
+        help="Confidence level for the Wilson interval on the eligibility rate "
+        "(default: 0.95).",
     )
 
     # ---- stratify ------------------------------------------------------------
@@ -79,9 +92,9 @@ def _build_parser() -> argparse.ArgumentParser:
     strat_p.add_argument("--input", "-i", required=True, help="Path to cohort CSV.")
     strat_p.add_argument("--study", default="Unnamed Study", help="Study name.")
     strat_p.add_argument(
-        "--females", type=int, default=640, help="Target female count."
+        "--females", type=int, default=600, help="Target female count."
     )
-    strat_p.add_argument("--males", type=int, default=176, help="Target male count.")
+    strat_p.add_argument("--males", type=int, default=200, help="Target male count.")
     strat_p.add_argument(
         "--output-dir",
         "-o",
@@ -90,9 +103,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     strat_p.add_argument(
         "--exclude-e2",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=True,
-        help="Exclude e2 carriers (default: True).",
+        help="Exclude e2 carriers (default: yes; use --no-exclude-e2 to keep them).",
     )
 
     return parser
@@ -104,7 +117,7 @@ def cmd_call(args: argparse.Namespace) -> None:
 
     fmt = args.format.lower()
     if fmt == "csv":
-        results = caller.call_from_csv(args.input)
+        results = caller.call_from_csv(args.input, sample_col=args.sample_col)
     elif fmt == "ped":
         results = caller.call_from_ped(args.input)
     elif fmt == "raw":
@@ -125,21 +138,26 @@ def cmd_call(args: argparse.Namespace) -> None:
         summary = caller.summarise(results)
         print(f"\n--- Summary ({summary.total_samples:,} samples) ---")
         for dip, count in sorted(summary.genotype_counts.items()):
-            pct = (count / summary.total_samples * 100) if summary.total_samples else 0.0
+            pct = (
+                (count / summary.total_samples * 100) if summary.total_samples else 0.0
+            )
             print(f"  {dip:12s}  {count:>6,}  ({pct:.1f}%)")
-        if summary.indeterminate_count:
-            print(f"  Indeterminate {summary.indeterminate_count:>6,}")
 
 
 def cmd_feasibility(args: argparse.Namespace) -> None:
     """Execute the 'feasibility' sub-command."""
     estimator = APOEFeasibilityEstimator()
     report = estimator.estimate_from_csv(
-        csv_path=args.input,
-        target_diplotypes=args.targets,
-        confidence_level=args.confidence,
+        args.input,
+        target_genotypes=args.targets,
+        sample_col=args.sample_col,
     )
     print(estimator.format_report(report))
+    low, high = report.eligibility_interval(args.confidence)
+    print(
+        f"{args.confidence:.0%} Wilson interval for the eligibility rate: "
+        f"{low:.1%} to {high:.1%}"
+    )
 
 
 def cmd_stratify(args: argparse.Namespace) -> None:
@@ -167,9 +185,9 @@ def cmd_stratify(args: argparse.Namespace) -> None:
         print(f"  -> {f}")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = _build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     dispatch = {
         "call": cmd_call,

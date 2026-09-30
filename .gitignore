@@ -22,3 +22,5 @@ env/
 # OS Specific
 .DS_Store
 *.egg-info/
+.mypy_cache/
+.venv/

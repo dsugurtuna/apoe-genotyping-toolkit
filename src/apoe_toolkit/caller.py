@@ -21,6 +21,7 @@ Author: Ugur Tuna
 """
 
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -48,6 +49,17 @@ APOE_DIPLOTYPE_MAP: dict[tuple[str, str], str] = {
     ("CT", "TC"): "e2/e4",
     ("TC", "CT"): "e2/e4",
 }
+
+
+def normalise_genotype(value: object) -> str:
+    """Return a two-allele genotype as sorted letters: 'C/T', 'T C' -> 'CT'.
+
+    Values that are not two alleles (missing data, '0 0') are returned
+    upper-cased without separators and will not match the lookup table.
+    """
+    text = re.sub(r"[\s/|]", "", str(value)).upper()
+    return "".join(sorted(text)) if len(text) == 2 else text
+
 
 RISK_PROFILES: dict[str, str] = {
     "e2/e2": "Reduced risk",
@@ -87,6 +99,7 @@ class APOESummary:
 # ---------------------------------------------------------------------------
 # Caller Class
 # ---------------------------------------------------------------------------
+
 
 class APOECaller:
     """
@@ -150,142 +163,146 @@ class APOECaller:
 
         results: list[APOEResult] = []
         for _, row in df.iterrows():
-            gt_429 = str(row["rs429358"])
-            gt_741 = str(row["rs7412"])
+            gt_429 = normalise_genotype(row["rs429358"])
+            gt_741 = normalise_genotype(row["rs7412"])
             genotype = APOE_DIPLOTYPE_MAP.get((gt_429, gt_741), "Indeterminate")
-            risk = RISK_PROFILES.get(genotype, "Unknown")
-
-            results.append(
-                APOEResult(
-                    sample_id=str(row["IID"]),
-                    rs429358_genotype=gt_429,
-                    rs7412_genotype=gt_741,
-                    apoe_genotype=genotype,
-                    risk_profile=risk,
-                    is_e4_carrier="e4" in genotype,
-                    is_e2_carrier="e2" in genotype,
-                )
-            )
+            results.append(self._result(str(row["IID"]), gt_429, gt_741, genotype))
         return results
 
     def call_from_csv(
         self,
         filepath: str,
-        sample_col: str = "IID",
+        sample_col: str | None = None,
         rs429358_col: str = "rs429358",
         rs7412_col: str = "rs7412",
         sep: str = ",",
     ) -> list[APOEResult]:
         """
-        Call APOE genotypes from a generic CSV/TSV file.
+        Call APOE genotypes from a CSV/TSV file.
+
+        The two SNP columns may hold genotype strings (``TT``, ``C/T``, ...)
+        or allele counts (0/1/2). Counts are read as the number of C alleles
+        at rs429358 and of T alleles at rs7412, the alleles that define e4
+        and e2.
 
         Parameters
         ----------
         filepath : str
             Path to the input file.
-        sample_col : str
-            Column name for sample identifiers.
-        rs429358_col : str
-            Column name for rs429358 genotype values.
-        rs7412_col : str
-            Column name for rs7412 genotype values.
+        sample_col : str, optional
+            Sample ID column. Defaults to ``IID``, or ``sample_id`` if there
+            is no ``IID`` column.
+        rs429358_col, rs7412_col : str
+            Column names for the two SNPs.
         sep : str
             Column delimiter.
-
-        Returns
-        -------
-        list of APOEResult
         """
         path = Path(filepath)
         if not path.exists():
             raise FileNotFoundError(f"Input file not found: {filepath}")
 
         df = pd.read_csv(path, sep=sep)
+        if sample_col is None:
+            sample_col = "IID" if "IID" in df.columns else "sample_id"
         required = {sample_col, rs429358_col, rs7412_col}
         missing = required - set(df.columns)
         if missing:
-            raise ValueError(f"Missing columns in input: {missing}")
+            raise ValueError(f"Missing columns in input: {sorted(missing)}")
+
+        as_counts = pd.api.types.is_numeric_dtype(
+            df[rs429358_col]
+        ) and pd.api.types.is_numeric_dtype(df[rs7412_col])
 
         results: list[APOEResult] = []
         for _, row in df.iterrows():
-            gt_429 = str(row[rs429358_col])
-            gt_741 = str(row[rs7412_col])
-            genotype = APOE_DIPLOTYPE_MAP.get((gt_429, gt_741), "Indeterminate")
-            risk = RISK_PROFILES.get(genotype, "Unknown")
-
-            results.append(
-                APOEResult(
-                    sample_id=str(row[sample_col]),
-                    rs429358_genotype=gt_429,
-                    rs7412_genotype=gt_741,
-                    apoe_genotype=genotype,
-                    risk_profile=risk,
-                    is_e4_carrier="e4" in genotype,
-                    is_e2_carrier="e2" in genotype,
+            if as_counts:
+                genotype, gt_429, gt_741 = self._dosage_to_diplotype(
+                    row[rs429358_col], row[rs7412_col]
                 )
-            )
+            else:
+                gt_429 = normalise_genotype(row[rs429358_col])
+                gt_741 = normalise_genotype(row[rs7412_col])
+                genotype = APOE_DIPLOTYPE_MAP.get((gt_429, gt_741), "Indeterminate")
+            results.append(self._result(str(row[sample_col]), gt_429, gt_741, genotype))
         return results
+
+    @staticmethod
+    def _result(sample_id: str, gt_429: str, gt_741: str, genotype: str) -> APOEResult:
+        return APOEResult(
+            sample_id=sample_id,
+            rs429358_genotype=gt_429,
+            rs7412_genotype=gt_741,
+            apoe_genotype=genotype,
+            risk_profile=RISK_PROFILES.get(genotype, "Unknown"),
+            is_e4_carrier="e4" in genotype,
+            is_e2_carrier="e2" in genotype,
+        )
 
     # ------------------------------------------------------------------
     # internal helpers
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _find_raw_column(columns: list[str], snp: str) -> tuple[str, str | None]:
+        """Return the .raw column for ``snp`` and its counted allele, if named."""
+        for col in columns:
+            if col == snp:
+                return col, None
+            if col.startswith(snp + "_"):
+                return col, col[len(snp) + 1 :].upper()
+        raise ValueError(f"Could not find a {snp} column in the .raw file.")
+
     def _call_from_dataframe(self, df: pd.DataFrame) -> list[APOEResult]:
-        """Resolve genotype from a DataFrame containing allele-count columns."""
-        results: list[APOEResult] = []
-        # In .raw format the columns are named <SNP>_<counted_allele>
-        snp_cols = [c for c in df.columns if c.startswith(("rs429358", "rs7412"))]
-        if len(snp_cols) < 2:
-            raise ValueError(
-                "Could not find rs429358 and rs7412 columns in the .raw file."
-            )
+        """Resolve genotypes from a PLINK .raw DataFrame.
 
-        rs429_col = [c for c in snp_cols if c.startswith("rs429358")][0]
-        rs741_col = [c for c in snp_cols if c.startswith("rs7412")][0]
-
-        for _, row in df.iterrows():
-            dose_429 = row[rs429_col]
-            dose_741 = row[rs741_col]
-            genotype, gt_429, gt_741 = self._dosage_to_diplotype(dose_429, dose_741)
-            risk = RISK_PROFILES.get(genotype, "Unknown")
-
-            results.append(
-                APOEResult(
-                    sample_id=str(row.get("IID", row.get("FID", ""))),
-                    rs429358_genotype=gt_429,
-                    rs7412_genotype=gt_741,
-                    apoe_genotype=genotype,
-                    risk_profile=risk,
-                    is_e4_carrier="e4" in genotype,
-                    is_e2_carrier="e2" in genotype,
+        PLINK names each column ``<SNP>_<counted allele>`` and counts its A1
+        allele, which is usually but not always the minor one. The counted
+        allele is read from the column name and the count converted to C
+        copies at rs429358 and T copies at rs7412. Alleles other than C and T
+        usually mean the data are on the reverse strand (A/G), which this
+        caller refuses rather than guesses.
+        """
+        columns = [str(c) for c in df.columns]
+        col_429, allele_429 = self._find_raw_column(columns, "rs429358")
+        col_741, allele_741 = self._find_raw_column(columns, "rs7412")
+        for snp, allele in (("rs429358", allele_429), ("rs7412", allele_741)):
+            if allele not in (None, "C", "T"):
+                raise ValueError(
+                    f"{snp} counts allele {allele!r}; expected C or T. The data "
+                    "may be on the reverse strand (A/G) and need flipping first."
                 )
-            )
+
+        results: list[APOEResult] = []
+        for _, row in df.iterrows():
+            d429, d741 = row[col_429], row[col_741]
+            if allele_429 == "T" and pd.notna(d429):
+                d429 = 2 - float(d429)
+            if allele_741 == "C" and pd.notna(d741):
+                d741 = 2 - float(d741)
+            genotype, gt_429, gt_741 = self._dosage_to_diplotype(d429, d741)
+            sample_id = str(row["IID"] if "IID" in row else row.get("FID", ""))
+            results.append(self._result(sample_id, gt_429, gt_741, genotype))
         return results
 
     @staticmethod
     def _dosage_to_diplotype(
-        dose_429: float, dose_741: float
+        dose_429: object, dose_741: object
     ) -> tuple[str, str, str]:
         """
-        Convert allele dosages (0/1/2) to diplotype strings and resolve the
-        APOE genotype.
+        Convert allele counts to genotype strings and the APOE genotype.
 
-        The counted allele in PLINK .raw for rs429358 is C (risk) and for
-        rs7412 is T (protective). We convert back to the two-character
-        genotype representation used by the lookup table.
+        ``dose_429`` is the number of C alleles at rs429358 and ``dose_741``
+        the number of T alleles at rs7412 (0, 1 or 2; non-integers are
+        rounded). Missing or out-of-range values give "Indeterminate".
         """
         try:
-            d429 = int(round(float(dose_429)))
-            d741 = int(round(float(dose_741)))
-        except (ValueError, TypeError):
+            d429 = round(float(str(dose_429)))
+            d741 = round(float(str(dose_741)))
+        except ValueError:
             return ("Indeterminate", str(dose_429), str(dose_741))
 
-        gt_429_map = {0: "TT", 1: "CT", 2: "CC"}
-        gt_741_map = {0: "CC", 1: "CT", 2: "TT"}
-
-        gt_429 = gt_429_map.get(d429, "??")
-        gt_741 = gt_741_map.get(d741, "??")
-
+        gt_429 = {0: "TT", 1: "CT", 2: "CC"}.get(d429, "??")
+        gt_741 = {0: "CC", 1: "CT", 2: "TT"}.get(d741, "??")
         genotype = APOE_DIPLOTYPE_MAP.get((gt_429, gt_741), "Indeterminate")
         return genotype, gt_429, gt_741
 

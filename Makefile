@@ -1,36 +1,26 @@
-.PHONY: help install dev test lint typecheck fmt clean docker-build docker-run
+.PHONY: install dev test lint format clean docker
 
-PYTHON ?= python3
+install:
+	pip install -e .
 
-help:  ## Show this help message
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+dev:
+	pip install -e ".[dev]"
 
-install:  ## Install the package
-	$(PYTHON) -m pip install .
+test:
+	pytest
 
-dev:  ## Install with development dependencies
-	$(PYTHON) -m pip install -e ".[dev]"
+lint:
+	ruff check .
+	ruff format --check .
+	mypy
 
-test:  ## Run the test suite
-	$(PYTHON) -m pytest tests/ -v --tb=short
+format:
+	ruff check --fix .
+	ruff format .
 
-lint:  ## Run ruff linter
-	$(PYTHON) -m ruff check src/ tests/
+clean:
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	rm -rf .pytest_cache .mypy_cache .ruff_cache build dist src/*.egg-info
 
-typecheck:  ## Run mypy type checker
-	$(PYTHON) -m mypy src/
-
-fmt:  ## Auto-format code with ruff
-	$(PYTHON) -m ruff format src/ tests/
-	$(PYTHON) -m ruff check --fix src/ tests/
-
-clean:  ## Remove build artefacts
-	rm -rf build/ dist/ *.egg-info src/*.egg-info .mypy_cache .pytest_cache .ruff_cache
-	find . -type d -name __pycache__ -exec rm -rf {} +
-
-docker-build:  ## Build Docker image
-	docker build -t apoe-toolkit:latest .
-
-docker-run:  ## Run the toolkit in Docker (pass ARGS="call --help")
-	docker run --rm apoe-toolkit:latest $(ARGS)
+docker:
+	docker build -t apoe-toolkit .

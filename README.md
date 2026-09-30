@@ -1,12 +1,8 @@
 # APOE Genotyping Toolkit
 
-[![CI](https://github.com/dsugurtuna/apoe-genotyping-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/dsugurtuna/apoe-genotyping-toolkit/actions)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
-[![PLINK](https://img.shields.io/badge/Tool-PLINK%201.9-red)](https://www.cog-genomics.org/plink/)
-[![Bioinformatics](https://img.shields.io/badge/Domain-Bioinformatics-green.svg)]()
-[![Portfolio](https://img.shields.io/badge/Status-Portfolio_Project-purple.svg)]()
+[![CI](https://github.com/dsugurtuna/apoe-genotyping-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/dsugurtuna/apoe-genotyping-toolkit/actions/workflows/ci.yml)
 
-A production-grade bioinformatics toolkit for determining Apolipoprotein E (APOE) genotypes from large-scale genomic datasets, estimating clinical-trial feasibility, and generating stratified recall lists.
+Call APOE genotypes (e2/e3/e4) from rs429358 and rs7412, count how many genotyped participants meet a study's criteria, and build recall lists balanced by e4 status, sex and age band.
 
 > **Portfolio disclaimer:** This repository contains sanitised, generalised versions of tooling developed during the author's tenure at NIHR BioResource. No real patient data, internal infrastructure paths, or participant identifiers are included. All examples use synthetic data.
 
@@ -16,19 +12,19 @@ A production-grade bioinformatics toolkit for determining Apolipoprotein E (APOE
 
 The APOE gene is the strongest known genetic risk factor for late-onset Alzheimer's disease. Accurately determining a participant's genotype (e.g. e3/e4 vs e3/e3) is critical for:
 
-- **Clinical trials** — stratifying patients by risk profile (e.g. NewAmsterdam Pharma AD feasibility screening).
-- **Recall studies** — generating balanced cohorts such as the NBR267 Memory and Menopause study requiring 816 participants split by APOE e4 carrier status, gender, and age band.
+- **Clinical trials** — stratifying patients by risk profile (e.g. feasibility screening for a pharmaceutical sponsor's Alzheimer's disease trial).
+- **Recall studies** — generating balanced cohorts, for example 800 participants split by APOE e4 carrier status, gender, and age band.
 - **GWAS preparation** — adjusting for APOE as a covariate in genome-wide association studies.
 - **Precision medicine** — tailoring interventions based on genetic susceptibility.
 
-## Features
+## What this does
 
-| Module | Description |
+| Module | What it does |
 |---|---|
-| **APOECaller** | Resolves all six standard diplotypes from rs429358 + rs7412 dosages. Reads PLINK `.raw`, `.ped`, and CSV/TSV. |
-| **APOEFeasibilityEstimator** | Estimates participant counts meeting target diplotype criteria for pharmaceutical feasibility enquiries. |
-| **CohortStratifier** | Generates recall lists balanced by APOE e4 carrier status, gender, and age band with configurable exclusion of e2 carriers. |
-| **CLI** | Three sub-commands (`call`, `feasibility`, `stratify`) for scriptable pipeline integration. |
+| **APOECaller** | Resolves the six common APOE genotypes from rs429358 and rs7412. Reads PLINK `--recode A` (`.raw`, using the counted allele in each column name), PLINK compound-genotype `.ped`, and CSV/TSV with genotype strings (`TT`, `C/T`) or allele counts. |
+| **APOEFeasibilityEstimator** | Counts genotyped participants whose genotype is in a target set, after exclusions, with a Wilson interval for the eligibility rate. |
+| **CohortStratifier** | Builds female and male recall lists with a set share of e4 carriers, spread across age bands, optionally excluding e2 carriers. |
+| **CLI** | `call`, `feasibility` and `stratify` sub-commands. |
 
 ## Genotype Mapping Logic
 
@@ -41,48 +37,30 @@ The APOE gene is the strongest known genetic risk factor for late-onset Alzheime
 | C/T | C/C | e3/e4 | Increased risk |
 | C/C | C/C | e4/e4 | Substantially increased risk |
 
-## Repository Structure
+## How it works
 
-```text
-.
-├── src/apoe_toolkit/          Python package
-│   ├── __init__.py            Package root (v2.0.0)
-│   ├── caller.py              Core genotype calling engine
-│   ├── feasibility.py         Clinical-trial feasibility estimator
-│   ├── stratifier.py          Stratified recall-list generator
-│   └── cli.py                 Command-line interface
-├── tests/                     Pytest test suite
-│   ├── test_caller.py
-│   ├── test_feasibility.py
-│   └── test_stratifier.py
-├── data/example/              Synthetic example data
-│   ├── example_dosages.csv
-│   └── example_cohort.csv
-├── legacy/                    Original pipeline scripts
-│   ├── apoe_caller.py
-│   ├── run_apoe_pipeline.sh
-│   ├── merge_batches.sh
-│   ├── slurm_template.sh
-│   └── snp_list.txt
-├── .github/workflows/ci.yml  GitHub Actions CI
-├── pyproject.toml             Build configuration
-├── Dockerfile                 Container image
-├── Makefile                   Developer shortcuts
-└── README.md
+```mermaid
+flowchart LR
+    P[PLINK .bed/.bim/.fam] -->|plink --extract rs429358 rs7412<br/>--recode A| R[.raw]
+    R --> C[APOECaller:<br/>counted allele to C and T copies]
+    G[CSV of genotypes<br/>or counts] --> C
+    C --> T[lookup table:<br/>e2/e2 ... e4/e4]
+    T --> F[feasibility counts]
+    T --> S[stratified recall lists]
 ```
+
+For a `.raw` file, PLINK names each column `<SNP>_<counted allele>`. The caller converts the count to copies of C at rs429358 and T at rs7412 and looks the pair up in the table above. A C/T SNP reported as A/G (the reverse strand) is refused rather than guessed.
 
 ## Quick Start
 
 ### Installation
 
 ```bash
-# From source
 git clone https://github.com/dsugurtuna/apoe-genotyping-toolkit.git
 cd apoe-genotyping-toolkit
-pip install .
-
-# With development dependencies
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
+pytest
 ```
 
 ### Command-Line Usage
@@ -92,21 +70,23 @@ pip install -e ".[dev]"
 apoe-toolkit call --input data/example/example_dosages.csv --format csv --summary
 ```
 
-**Estimate feasibility for an Alzheimer's trial:**
+**Count participants with target genotypes (with a 95% Wilson interval):**
 ```bash
-apoe-toolkit feasibility --input results.csv --targets e4/e4 e3/e4
+apoe-toolkit feasibility --input data/example/example_dosages.csv --targets e4/e4 e3/e4
 ```
 
-**Generate stratified recall lists (NBR267-style):**
+**Generate stratified recall lists:**
 ```bash
 apoe-toolkit stratify \
     --input data/example/example_cohort.csv \
-    --study "NBR267 Memory and Menopause" \
-    --females 640 --males 176 \
+    --study "STUDY-A" \
+    --females 600 --males 200 \
     --output-dir recall_output/
 ```
 
 ### Python API
+
+The file names in this example are placeholders for your own data.
 
 ```python
 from apoe_toolkit import APOECaller, APOEFeasibilityEstimator, CohortStratifier
@@ -118,9 +98,7 @@ summary = caller.summarise(results)
 
 # Feasibility
 estimator = APOEFeasibilityEstimator()
-report = estimator.estimate_from_results(
-    results, target_genotypes=["e3/e4", "e4/e4"]
-)
+report = estimator.estimate_from_results(results, target_genotypes=["e3/e4", "e4/e4"])
 print(estimator.format_report(report))
 
 # Stratification
@@ -129,9 +107,9 @@ from apoe_toolkit.stratifier import StratificationConfig
 
 cohort = pd.read_csv("cohort.csv")
 config = StratificationConfig(
-    study_name="NBR267 Memory and Menopause",
-    target_female_count=640,
-    target_male_count=176,
+    study_name="STUDY-A",
+    target_female_count=600,
+    target_male_count=200,
     exclude_e2_carriers=True,
 )
 stratifier = CohortStratifier()
@@ -148,24 +126,44 @@ docker run --rm -v "$PWD/data:/data" apoe-toolkit call --input /data/example/exa
 
 ## Legacy Scripts
 
-The original Bash/Python pipeline scripts are preserved under the `legacy/` directory for reference. These were designed for HPC (SLURM) environments and rely on PLINK 1.9 for genotype extraction before passing data to the Python caller.
+The original Bash/Python pipeline scripts are preserved under the `legacy/` directory for reference. These were designed for HPC (SLURM) environments and rely on PLINK 1.9 for genotype extraction before passing data to the Python caller. They are not maintained or linted.
 
 ## Testing
 
 ```bash
-make test        # runs pytest
-make lint        # runs ruff linter
-make typecheck   # runs mypy
+make test        # pytest
+make lint        # ruff check, ruff format --check, mypy --strict
 ```
 
-## Jira Provenance
+## Design decisions
 
-This toolkit consolidates work from the following categories of tasks:
+- **Read the counted allele, do not assume it.** PLINK counts its A1 allele, which is usually the minor allele (C at rs429358, T at rs7412) but can differ, for example after `--keep-allele-order` or in an e4-enriched sample. Reading it from the column name removes the assumption.
+- **Refuse reverse-strand data.** An A/G call at a C/T SNP can be fixed by flipping, but guessing silently could swap e3 and e4.
+- **Report e2/e4 as e2/e4.** The C-T / C-T combination is also consistent with the very rare e1/e3; the table follows the usual convention.
+- **Deterministic selection.** Recall lists take candidates in file order within each age band, so reruns give the same list. Shortfalls are visible in the summary rather than filled from other bands.
+- **Wilson interval, not a normal approximation,** because eligible genotypes such as e4/e4 are rare and the normal interval misbehaves near 0.
 
-- **APOE genotyping** — Batch processing of UKBBv2.1 arrays through PLINK extraction and Python-based diplotype resolution.
-- **Feasibility screening** — Rapid e4/e4 and e3/e4 counts for pharmaceutical trial viability assessment (Alzheimer's disease).
-- **Recall-study generation** — Stratified recall lists for studies requiring balanced APOE/gender/age representation (e.g. 816-participant design with 50/50 e4 carrier split across menopause stages).
+## Limitations and what it is not
+
+- Two SNPs define APOE e2/e3/e4 only; rarer variants are out of scope.
+- It does not impute. rs429358 is missing from some genotyping arrays and can impute poorly, so check its call rate or genotype it directly.
+- Counts are exact for the genotyped cohort. The Wilson interval only helps when treating the cohort as a sample of a wider population.
+- Genotype-based recall has ethical and consent requirements that sit outside this tool.
+
+## Where this fits
+
+Genotype calls feed [clinical-cohort-selector](https://github.com/dsugurtuna/clinical-cohort-selector) and [recall-study-generator](https://github.com/dsugurtuna/recall-study-generator); for general SNP availability checks see [snp-feasibility-checker](https://github.com/dsugurtuna/snp-feasibility-checker).
+
+## Roadmap
+
+- Read VCF directly (via BCFtools) as well as PLINK output.
+- Add an optional random seed to recall-list selection.
+- Report genotype call rates for the two SNPs alongside the counts.
 
 ## Licence
 
-MIT
+MIT is declared in `pyproject.toml`, but no licence file is included yet.
+
+---
+
+Personal project by [Ugur Tuna](https://github.com/dsugurtuna). Not affiliated with or endorsed by any employer.
