@@ -17,7 +17,10 @@ Author: Ugur Tuna
 """
 
 import logging
+import math
 from dataclasses import dataclass, field
+from statistics import NormalDist
+from typing import Any
 
 from apoe_toolkit.caller import APOECaller, APOEResult
 
@@ -44,7 +47,23 @@ class FeasibilityReport:
             return 0.0
         return self.eligible_count / self.total_genotyped
 
-    def to_dict(self) -> dict:
+    def eligibility_interval(self, confidence: float = 0.95) -> tuple[float, float]:
+        """Wilson score interval for the eligibility rate.
+
+        Useful when the genotyped cohort is treated as a sample of a wider
+        population (for example, to estimate how many people a recruitment
+        drive might find). For the cohort itself the count is exact.
+        """
+        n = self.total_genotyped
+        if n == 0:
+            return (0.0, 0.0)
+        z = NormalDist().inv_cdf(0.5 + confidence / 2)
+        p = self.eligible_count / n
+        centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+        half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+        return (max(0.0, centre - half), min(1.0, centre + half))
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to a plain dictionary for serialisation."""
         return {
             "study_name": self.study_name,
@@ -144,7 +163,7 @@ class APOEFeasibilityEstimator:
         study_name: str = "Unnamed Study",
         target_genotypes: list[str] | None = None,
         exclude_genotypes: list[str] | None = None,
-        sample_col: str = "IID",
+        sample_col: str | None = None,
         rs429358_col: str = "rs429358",
         rs7412_col: str = "rs7412",
         sep: str = ",",

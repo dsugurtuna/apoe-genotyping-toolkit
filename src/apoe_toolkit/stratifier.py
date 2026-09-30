@@ -40,7 +40,7 @@ class StratificationConfig:
     female_age_bands: list[tuple[int, int]] | None = None
     male_age_bands: list[tuple[int, int]] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.female_age_bands is None:
             self.female_age_bands = [
                 (35, 39),
@@ -236,17 +236,22 @@ class CohortStratifier:
         target: int,
         age_bands: list[tuple[int, int]],
     ) -> pd.DataFrame:
-        """Distribute samples proportionally across age bands."""
-        per_band = max(1, target // len(age_bands))
-        remainder = target - per_band * len(age_bands)
+        """Spread ``target`` as evenly as possible across age bands.
 
+        Each band gets ``target // n`` places and the first ``target % n``
+        bands one more, so the total never exceeds ``target``. A band with
+        too few candidates is not topped up from other bands; the shortfall
+        shows in the arm summary.
+        """
+        if target <= 0 or not age_bands:
+            return df.iloc[0:0]
+        per_band, remainder = divmod(target, len(age_bands))
         parts: list[pd.DataFrame] = []
         for i, (lo, hi) in enumerate(age_bands):
             band_df = df[(df["age"] >= lo) & (df["age"] <= hi)]
             n = per_band + (1 if i < remainder else 0)
-            parts.append(band_df.head(min(n, len(band_df))))
-
-        return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+            parts.append(band_df.head(n))
+        return pd.concat(parts, ignore_index=True)
 
     @staticmethod
     def export_recall_lists(
