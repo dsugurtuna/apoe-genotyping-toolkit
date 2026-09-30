@@ -56,7 +56,6 @@ extend-exclude = ["legacy"]
 select = ["E", "F", "W", "I", "UP", "B"]
 
 [tool.mypy]
-python_version = "3.11"
 files = ["src"]
 strict = true
 
