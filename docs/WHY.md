@@ -26,7 +26,7 @@ APOE e2/e3/e4 status comes from two SNPs, rs429358 and rs7412, and is one of the
 No. It is a research genotype from array or imputed data. Returning APOE status to individuals needs an accredited test, genetic counselling and consent for that purpose. This tool supports counting and selecting participants for studies that have those arrangements.
 
 **"How do you know the calls are right?"**
-The unit tests pin the lookup table and the allele handling. In real use you would check call rates for both SNPs, compare genotype frequencies with published frequencies for the population, and, where available, compare with directly genotyped samples. rs429358 is missing from some arrays and imputes less well than most SNPs, which is worth checking first.
+The unit tests pin the lookup table and the allele handling. In real use you would check call rates for both SNPs, compare genotype frequencies with published frequencies for the population, and, where available, compare with directly genotyped samples. rs429358 is missing from some arrays and can impute poorly, which is worth checking first.
 
 **"What if the stratification cannot fill every age band?"**
 It selects what is available and reports the shortfall; it does not borrow from neighbouring bands, because that would change the age profile the study asked for. The summary shows available versus selected for each arm.
