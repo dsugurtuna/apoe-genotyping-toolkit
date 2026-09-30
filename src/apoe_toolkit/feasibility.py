@@ -18,7 +18,6 @@ Author: Ugur Tuna
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 from apoe_toolkit.caller import APOECaller, APOEResult
 
@@ -82,8 +81,8 @@ class APOEFeasibilityEstimator:
         self,
         results: list[APOEResult],
         study_name: str = "Unnamed Study",
-        target_genotypes: Optional[list[str]] = None,
-        exclude_genotypes: Optional[list[str]] = None,
+        target_genotypes: list[str] | None = None,
+        exclude_genotypes: list[str] | None = None,
         exclude_indeterminate: bool = True,
     ) -> FeasibilityReport:
         """
@@ -107,7 +106,7 @@ class APOEFeasibilityEstimator:
         -------
         FeasibilityReport
         """
-        target_set: Optional[set[str]] = (
+        target_set: set[str] | None = (
             set(target_genotypes) if target_genotypes else None
         )
         exclude_set: set[str] = set(exclude_genotypes) if exclude_genotypes else set()
@@ -143,8 +142,8 @@ class APOEFeasibilityEstimator:
         self,
         filepath: str,
         study_name: str = "Unnamed Study",
-        target_genotypes: Optional[list[str]] = None,
-        exclude_genotypes: Optional[list[str]] = None,
+        target_genotypes: list[str] | None = None,
+        exclude_genotypes: list[str] | None = None,
         sample_col: str = "IID",
         rs429358_col: str = "rs429358",
         rs7412_col: str = "rs7412",
@@ -207,16 +206,20 @@ class APOEFeasibilityEstimator:
             f"Excluded participants    : {report.excluded_count:,}",
             "",
             "Target genotypes         : "
-            + (", ".join(report.target_genotypes) if report.target_genotypes else "All"),
+            + (
+                ", ".join(report.target_genotypes) if report.target_genotypes else "All"
+            ),
             "Exclusion criteria       : "
-            + (", ".join(report.exclusion_criteria) if report.exclusion_criteria else "None"),
+            + (
+                ", ".join(report.exclusion_criteria)
+                if report.exclusion_criteria
+                else "None"
+            ),
             "",
             "Genotype breakdown:",
             "-" * 40,
         ]
-        for gt, count in sorted(
-            report.genotype_breakdown.items(), key=lambda x: -x[1]
-        ):
+        for gt, count in sorted(report.genotype_breakdown.items(), key=lambda x: -x[1]):
             pct = count / report.total_genotyped * 100 if report.total_genotyped else 0
             lines.append(f"  {gt:15s}  {count:>8,}  ({pct:5.1f}%)")
 

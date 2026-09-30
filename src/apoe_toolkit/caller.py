@@ -88,6 +88,7 @@ class APOESummary:
 # Caller Class
 # ---------------------------------------------------------------------------
 
+
 class APOECaller:
     """
     Determines APOE genotypes from genomic data.
@@ -263,9 +264,7 @@ class APOECaller:
         return results
 
     @staticmethod
-    def _dosage_to_diplotype(
-        dose_429: float, dose_741: float
-    ) -> tuple[str, str, str]:
+    def _dosage_to_diplotype(dose_429: float, dose_741: float) -> tuple[str, str, str]:
         """
         Convert allele dosages (0/1/2) to diplotype strings and resolve the
         APOE genotype.

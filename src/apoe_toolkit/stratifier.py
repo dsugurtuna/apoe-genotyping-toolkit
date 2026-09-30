@@ -22,7 +22,6 @@ Author: Ugur Tuna
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -38,8 +37,8 @@ class StratificationConfig:
     target_male_count: int = 176
     apoe_carrier_ratio: float = 0.5  # proportion of e4 carriers in each group
     exclude_e2_carriers: bool = True
-    female_age_bands: Optional[list[tuple[int, int]]] = None
-    male_age_bands: Optional[list[tuple[int, int]]] = None
+    female_age_bands: list[tuple[int, int]] | None = None
+    male_age_bands: list[tuple[int, int]] | None = None
 
     def __post_init__(self):
         if self.female_age_bands is None:
@@ -78,8 +77,8 @@ class StratificationResult:
     """Complete output of a stratification run."""
 
     config: StratificationConfig
-    female_list: Optional[RecallList] = None
-    male_list: Optional[RecallList] = None
+    female_list: RecallList | None = None
+    male_list: RecallList | None = None
     excluded_count: int = 0
     total_eligible: int = 0
 
@@ -140,6 +139,7 @@ class CohortStratifier:
         # Derive age if year_of_birth is present but age is not
         if "age" not in df.columns and "year_of_birth" in df.columns:
             import datetime
+
             current_year = datetime.datetime.now().year
             df["age"] = current_year - df["year_of_birth"]
 
@@ -157,7 +157,9 @@ class CohortStratifier:
         excluded = initial_count - len(df)
 
         # Classify carrier status
-        df["is_e4_carrier"] = df["apoe_genotype"].str.contains("e4", case=False, na=False)
+        df["is_e4_carrier"] = df["apoe_genotype"].str.contains(
+            "e4", case=False, na=False
+        )
 
         result = StratificationResult(
             config=config,
@@ -195,7 +197,7 @@ class CohortStratifier:
         arm_name: str,
         target_count: int,
         carrier_ratio: float,
-        age_bands: Optional[list[tuple[int, int]]],
+        age_bands: list[tuple[int, int]] | None,
     ) -> RecallList:
         """Select participants for one arm, balanced by APOE and age."""
         carriers = df[df["is_e4_carrier"]]
@@ -205,8 +207,12 @@ class CohortStratifier:
         n_non_carriers = target_count - n_carriers
 
         if age_bands:
-            selected_carriers = self._sample_by_age_bands(carriers, n_carriers, age_bands)
-            selected_non = self._sample_by_age_bands(non_carriers, n_non_carriers, age_bands)
+            selected_carriers = self._sample_by_age_bands(
+                carriers, n_carriers, age_bands
+            )
+            selected_non = self._sample_by_age_bands(
+                non_carriers, n_non_carriers, age_bands
+            )
         else:
             selected_carriers = carriers.head(min(n_carriers, len(carriers)))
             selected_non = non_carriers.head(min(n_non_carriers, len(non_carriers)))

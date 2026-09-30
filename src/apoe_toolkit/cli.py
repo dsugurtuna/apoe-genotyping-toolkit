@@ -125,7 +125,9 @@ def cmd_call(args: argparse.Namespace) -> None:
         summary = caller.summarise(results)
         print(f"\n--- Summary ({summary.total_samples:,} samples) ---")
         for dip, count in sorted(summary.genotype_counts.items()):
-            pct = (count / summary.total_samples * 100) if summary.total_samples else 0.0
+            pct = (
+                (count / summary.total_samples * 100) if summary.total_samples else 0.0
+            )
             print(f"  {dip:12s}  {count:>6,}  ({pct:.1f}%)")
         if summary.indeterminate_count:
             print(f"  Indeterminate {summary.indeterminate_count:>6,}")
